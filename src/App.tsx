@@ -160,56 +160,58 @@ export default function App() {
 
   return (
     <div className="page-shell">
-      <div className="container login-container">
-        <div className="top-right-i">i</div>
+      <div className="auth-stack">
+        <div className="container login-container">
+          <div className="top-right-i">i</div>
 
-        <div className="logo-container">
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/250px-Instagram_icon.png"
-            alt="Instagram"
-            className="insta-logo"
-          />
+          <div className="logo-container">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/250px-Instagram_icon.png"
+              alt="Instagram"
+              className="insta-logo"
+            />
+          </div>
+
+          <div className="insta-text">Instagram</div>
+
+          <div className="signin-box">
+            Sign in to your account to see photos of
+            <strong>aadya.tiwari.me</strong>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="login-form">
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Phone number, username, or email"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+            />
+
+            <div className={`error ${error ? 'show' : ''}`}>{error || 'Incorrect username or password.'}</div>
+
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? <span className="spinner" /> : null}
+              {isLoading ? 'Logging in...' : 'Log in'}
+            </button>
+          </form>
+
+          <div className="or-divider"><span>OR</span></div>
+          <a href="#" className="facebook-link">Log in with Facebook</a>
+
+          <p className="small-link">
+            <a href="#">Forgot password?</a>
+          </p>
         </div>
 
-        <div className="insta-text">Instagram</div>
-
-        <div className="signin-box">
-          Sign in to your account to see photos of
-          <strong>aadya.tiwari.me</strong>
+        <div className="signup-card">
+          Don’t have an account? <a href="#">Sign up</a>
         </div>
-
-        <form onSubmit={handleLoginSubmit} className="login-form">
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Phone number, username, or email"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-          />
-
-          <div className={`error ${error ? 'show' : ''}`}>{error || 'Incorrect username or password.'}</div>
-
-          <button type="submit" disabled={isLoading}>
-            {isLoading ? <span className="spinner" /> : null}
-            {isLoading ? 'Logging in...' : 'Log in'}
-          </button>
-        </form>
-
-        <div className="or-text">OR</div>
-        <a href="#" className="facebook-link">Log in with Facebook</a>
-
-        <p className="small-link">
-          <a href="#">Forgot password?</a>
-        </p>
-
-        <p className="signup-line">
-          Don't have an account? <a href="#">Sign up</a>
-        </p>
       </div>
     </div>
   );
