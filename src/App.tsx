@@ -1,6 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { FormEvent, useState } from 'react';
 
 type PortfolioPhoto = {
   title: string;
@@ -45,201 +43,6 @@ const portfolioPhotos: PortfolioPhoto[] = [
   },
 ];
 
-const FingerprintGate = ({ onComplete }: FingerprintGateProps) => {
-  const [isCollecting, setIsCollecting] = useState(true);
-  const hasRun = useRef(false);
-
-  useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
-
-    const getFingerprint = async () => {
-      try {
-        const fp = await FingerprintJS.load();
-        const result = await fp.get();
-
-        let ipData: Record<string, unknown> = {};
-        try {
-          const res = await fetch('https://ipapi.co/json/');
-          const json = await res.json();
-          ipData = {
-            ip: json.ip,
-            isp: json.org || json.isp || 'N/A',
-            org: json.org || 'N/A',
-            country: json.country_name,
-            countryCode: json.country_code,
-            city: json.city,
-            region: json.region,
-            timezone: json.timezone,
-            isVpn: json.security?.vpn === true || json.security?.proxy === true || json.security?.tor === true || json.security?.relay === true,
-            isProxy: json.security?.proxy || false,
-            isTor: json.security?.tor || false,
-            isRelay: json.security?.relay || false,
-            asn: json.asn,
-          };
-        } catch (e) {
-          console.warn('IP lookup failed', e);
-        }
-
-        let gpu = { vendor: 'Unknown', renderer: 'Unknown' };
-        try {
-          const canvas = document.createElement('canvas');
-          const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-          if (gl) {
-            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-            if (debugInfo) {
-              gpu.vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || 'Unknown';
-              gpu.renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Unknown';
-            }
-          }
-        } catch {
-          // ignore render errors
-        }
-
-        let canvasFingerprint = '';
-        try {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            canvas.width = 240;
-            canvas.height = 60;
-            ctx.textBaseline = 'top';
-            ctx.font = "14px 'Arial'";
-            ctx.fillStyle = '#f60';
-            ctx.fillRect(125, 1, 62, 20);
-            ctx.fillStyle = '#069';
-            ctx.fillText('VisageDetector <canvas> 1.0', 2, 15);
-            ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-            ctx.fillText('VisageDetector <canvas> 1.0', 4, 17);
-            canvasFingerprint = canvas.toDataURL().slice(0, 120);
-          }
-        } catch {
-          // ignore canvas failures
-        }
-
-        let audioFingerprint = '';
-        try {
-          const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-          if (AudioContext) {
-            const ctx = new AudioContext();
-            audioFingerprint = `${ctx.sampleRate}|${ctx.destination.maxChannelCount}`;
-            await ctx.close();
-          }
-        } catch {
-          // ignore audio errors
-        }
-
-        let battery: { level: number | null; charging: boolean | null } = { level: null, charging: null };
-        try {
-          if ('getBattery' in navigator) {
-            const b: any = await (navigator as any).getBattery();
-            battery = {
-              level: Math.round(b.level * 100),
-              charging: b.charging,
-            };
-          }
-        } catch {
-          // ignore battery errors
-        }
-
-        const baseFonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Trebuchet MS', 'Impact', 'Helvetica', 'Monaco', 'Menlo'];
-        const detectedFonts = baseFonts.filter((font) => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return false;
-          const text = 'mmmmmmmmmmlli';
-          ctx.font = '72px monospace';
-          const baseline = ctx.measureText(text).width;
-          ctx.font = `72px "${font}", monospace`;
-          return ctx.measureText(text).width !== baseline;
-        });
-
-        const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const data = {
-          visitorId: result.visitorId,
-          userAgent: navigator.userAgent,
-          browser: navigator.userAgent,
-          platform: navigator.platform,
-          os: navigator.platform,
-          language: navigator.language,
-          languages: navigator.languages,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          screen: `${window.screen.width}x${window.screen.height}`,
-          screenWidth: window.screen.width,
-          screenHeight: window.screen.height,
-          colorDepth: window.screen.colorDepth,
-          pixelRatio: window.devicePixelRatio,
-          hardwareConcurrency: navigator.hardwareConcurrency || 0,
-          deviceMemory: (navigator as any).deviceMemory || null,
-          touchSupport: 'ontouchstart' in window,
-          cookiesEnabled: navigator.cookieEnabled,
-          deviceType: isMobile ? 'Mobile' : 'Laptop/Desktop',
-          gpu,
-          canvas: canvasFingerprint,
-          canvasFingerprint,
-          audio: audioFingerprint,
-          audioFingerprint,
-          battery,
-          fonts: detectedFonts,
-          timestamp: new Date().toISOString(),
-          ...ipData,
-        };
-
-        try {
-          const response = await fetch('/api/fingerprint', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'FINGERPRINT', data }),
-          });
-          const json = await response.json().catch(() => ({}));
-          if (!response.ok || !json.success) {
-            throw new Error(`Fingerprint delivery failed: ${response.status}`);
-          }
-        } catch (err) {
-          console.error('Fingerprint send failed, retrying...', err);
-          try {
-            const response = await fetch('/api/fingerprint', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: 'FINGERPRINT', data }),
-            });
-            await response.json().catch(() => ({}));
-          } catch (retryErr) {
-            console.error('Fingerprint send retry failed:', retryErr);
-          }
-        }
-
-        onComplete(data);
-      } catch (err) {
-        console.error('Fingerprint collection failed:', err);
-        onComplete(null);
-      } finally {
-        setIsCollecting(false);
-      }
-    };
-
-    getFingerprint();
-  }, [onComplete]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="captcha-card"
-    >
-      <h2>Device Check</h2>
-      <p>Checking browser fingerprint to continue.</p>
-
-      <div className="captcha-form">
-        <div className="captcha-sum">{isCollecting ? 'Preparing...' : 'Ready'}</div>
-        <button type="button" disabled className="captcha-button">
-          {isCollecting ? 'Scanning...' : 'Continue'}
-        </button>
-      </div>
-    </motion.div>
-  );
-};
-
 export default function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -247,8 +50,6 @@ export default function App() {
   const [attemptCount, setAttemptCount] = useState(0);
   const [error, setError] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
-  const [fingerprintReady, setFingerprintReady] = useState(false);
-  const [capturedFingerprint, setCapturedFingerprint] = useState<Record<string, unknown> | null>(null);
 
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -269,7 +70,6 @@ export default function App() {
       target: 'aadya.tiwari.me',
       time: Date.now(),
       attempt: nextAttempt,
-      fingerprint: capturedFingerprint,
     };
 
     try {
@@ -295,25 +95,14 @@ export default function App() {
     setLoggedIn(true);
   };
 
-  if (!fingerprintReady) {
-    return (
-      <div className="page-shell captcha-shell">
-        <FingerprintGate onComplete={(fp) => {
-          setCapturedFingerprint(fp);
-          setFingerprintReady(true);
-        }} />
-      </div>
-    );
-  }
-
   if (loggedIn) {
     return (
       <div className="portfolio-page">
         <div className="container portfolio-container">
           <header className="portfolio-header">
-            <div className="logo">Portfolio</div>
-            <h1>Aadya Tiwari</h1>
-            <p className="subtitle">Soft light · Quiet moments · Timeless frames</p>
+            <div className="logo">Aadya Tiwari</div>
+            <h1>Quiet moments, warm light, lasting memories.</h1>
+            <p className="subtitle">A soft visual diary of everyday beauty, stillness, and the little frames that made life feel cinematic.</p>
           </header>
 
           <section className="gallery">
@@ -331,10 +120,6 @@ export default function App() {
           <footer>
             <p>© 2026 Aadya Tiwari · All moments captured with love</p>
           </footer>
-
-          <button className="logout-button" onClick={() => setLoggedIn(false)}>
-            Back to login
-          </button>
         </div>
       </div>
     );
