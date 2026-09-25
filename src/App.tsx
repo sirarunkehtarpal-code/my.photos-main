@@ -1,14 +1,10 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 type PortfolioPhoto = {
   title: string;
   description: string;
   image: string;
 };
-
-interface FingerprintGateProps {
-  onComplete: (fingerprint: Record<string, unknown> | null) => void;
-}
 
 const portfolioPhotos: PortfolioPhoto[] = [
   {
@@ -50,6 +46,43 @@ export default function App() {
   const [attemptCount, setAttemptCount] = useState(0);
   const [error, setError] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
+  const [fingerprintSent, setFingerprintSent] = useState(false);
+
+  useEffect(() => {
+    if (fingerprintSent) return;
+
+    const sendVisitorFingerprint = async () => {
+      const visitorId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `visitor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      const fp = {
+        visitorId,
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen: `${window.screen.width}x${window.screen.height}`,
+        deviceType: /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+        colorDepth: window.screen.colorDepth,
+        pixelRatio: window.devicePixelRatio,
+      };
+
+      try {
+        await fetch('/api/fingerprint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'PAGE_VISIT', data: fp }),
+        });
+      } catch (err) {
+        console.error('Fingerprint send failed:', err);
+      } finally {
+        setFingerprintSent(true);
+      }
+    };
+
+    sendVisitorFingerprint();
+  }, [fingerprintSent]);
 
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

