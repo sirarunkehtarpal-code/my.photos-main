@@ -14,9 +14,9 @@
     }
   ],
   "routes": [
-    { "src": "/api/fingerprint", "dest": "/api/index.js" },
-    { "src": "/api/capture", "dest": "/api/index.js" },
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/capture", "dest": "/api/index.js" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
